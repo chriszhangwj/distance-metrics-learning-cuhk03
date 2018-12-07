@@ -1,0 +1,45 @@
+Given a probe image (query), our task is to search in a
+gallery (database) for images that contain the same person.
+
+
+
+7,368 images with 767 identities for training,
+5,328 images with the remaining 700 identities for gallery, and
+1,400 images with the same 700 gallery identities for query.
+
+
+
+Apart from the previous evaluation method, we also report
+results using a new training/testing protocol similar to
+that of Market-1501. The new protocol splits the dataset
+into training set and testing set, which consist of 767 identities
+and 700 identities respectively. In testing, we randomly
+select one image from each camera as the query for each
+identity and use the rest of images to construct the gallery
+set. The new protocol has two advantages:1) For each identity,
+there are multiple ground truths in the gallery. This
+is more consistent with practical application scenario. 2)
+Evenly dividing the dataset into training set and testing set
+at once helps avoid repeating training and testing multiple
+times
+
+Re-ranking Person Re-identification with k-reciprocal Encoding
+https://arxiv.org/pdf/1701.08398.pdf
+
+DeepReID: Deep Filter Pairing Neural Network for Person Re-Identification
+https://www.cv-foundation.org/openaccess/content_cvpr_2014/papers/Li_DeepReID_Deep_Filter_2014_CVPR_paper.pdf
+
+Relaxed Pairwise Learned Metric for Person Re-Identification (possible improvement)
+https://pdfs.semanticscholar.org/1a0a/06e659eb075d414286d61bd36931770db799.pdf
+
+Scalable Person Re-identification: A Benchmark (use of CMC and mAP)
+https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Zheng_Scalable_Person_Re-Identification_ICCV_2015_paper.pdf
+
+distance metrics usc slides
+http://researchers.lille.inria.fr/abellet/talks/metric_learning_tutorial_CIL.pdf
+
+AP and mAP
+https://makarandtapaswi.wordpress.com/2012/07/02/intuition-behind-average-precision-and-map/
+
+distance metics learning through convex optimization (Overview)
+https://pdfs.semanticscholar.org/f743/924f73e2b44a184156fa67cf6f33f6ee3539.pdf
