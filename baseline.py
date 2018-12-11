@@ -86,23 +86,10 @@ camId_gallery = camId[gallery_idx-1]
 iden_query = np.unique(label_query)
 iden_gallery = np.unique(label_gallery)
 
-
-#for i in range (gallery_idx.shape[0]):
-#    if camId_gallery[i] == 1:
-#        features_gallery[i] = 0
-#features_gallery_ = features_gallery[~(features_gallery==0).all(1)]  
-#label_gallery_ = label_gallery[~(features_gallery==0).all(1)]  
-#
-#for i in range (query_idx.shape[0]):
-#    if camId_query[i] == 2:
-#        features_query[i] = 0
-#features_query_ = features_query[~(features_query==0).all(1)]
-#label_query_ = label_query[~(features_query==0).all(1)]
-
 n_neighbors = 5328
 
 #knn classifier with metric defined
-clf = kNN(n_neighbors,'cosine')
+clf = kNN(n_neighbors,'chebyshev')
 pred, errors = clf.fit(features_query, features_gallery)
 
 print("--------finished KNN-----------")
@@ -129,10 +116,10 @@ arr_idx = np.vstack(pred_idx_temp)
 
 print("--------finished compiling rank lists-----------")
 #
-#rank1 accuracy
+#-------------------------------------rank1 accuracy-------------------------------------
 #score_rank1 = accuracy_score(arr_label[:,0], label_query)
 
-# rankk accuracy
+#-------------------------------------rankk accuracy-------------------------------------
 #rankk=10
 #arr_label_rankk=np.zeros((1400,1))
 #for i in range(query_idx.shape[0]):
@@ -142,23 +129,20 @@ print("--------finished compiling rank lists-----------")
 #            break
 #score_rankk = accuracy_score(arr_label_rankk, label_query)
 
-# rankk accuracy up to k
-rankk=100
-score_rankk=np.zeros([1,rankk])
-for i in range(1,rankk+1): 
-    arr_label_rankk=np.zeros((1400,1))
-    for n in range(query_idx.shape[0]):
-        for m in range(i):
-            if (arr_label[n,m]==label_query[n]):
-                arr_label_rankk[n]=arr_label[n,m]
-                break
-    score_rankk[0,i-1] = accuracy_score(arr_label_rankk, label_query)
+#---------------------------------rankk accuracy up to k---------------------------------
+#rankk=100
+#score_rankk=np.zeros([1,rankk])
+#for i in range(1,rankk+1): 
+#    arr_label_rankk=np.zeros((1400,1))
+#    for n in range(query_idx.shape[0]):
+#        for m in range(i):
+#            if (arr_label[n,m]==label_query[n]):
+#                arr_label_rankk[n]=arr_label[n,m]
+#                break
+#    score_rankk[0,i-1] = accuracy_score(arr_label_rankk, label_query)
     
-
-
-
     
-# r rankk accuracy up to k with CUHK03 protocol
+#------------------------r rankk accuracy up to k with CUHK03 protocol-------------------
 # note this requires all gallery for KNN
 #instance_key=[]
 #query_key=[]
@@ -168,7 +152,7 @@ for i in range(1,rankk+1):
 #            instance_key.append(gallery_idx[j])
 #    query_key.append(instance_key)
 #    instance_key=[]
-#rankk=10
+#rankk=100
 #score_rankk=np.zeros([100,rankk])
 #for dice in range (100):
 #    for i in range(1,rankk+1):
@@ -184,40 +168,29 @@ for i in range(1,rankk+1):
 #score_mean_rankk=np.mean(score_rankk, axis=0)
 
 
-#
-#mAP at k
+#-------------------------------------mAP at k-------------------------------------------
 # first create list of list
-#actual=label_query.tolist()
-#type(actual)
-#type(actual[0])
-#predicted=arr_label.tolist()
-#print(type(predicted))
-#print(type(predicted[0]))
-#score_map = mapk(actual,predicted,k=N_ranklist)
-#
-#true_count=np.zeros((1400,1))
-#for i in range (query_idx.shape[0]):
-#    count=0
-#    for j in range(n_neighbors):
-#        if (pred_labels[i][j] == label_query[i]) and (camId_query[i] != camId_gallery[pred[i]][j]):
-#            count=count+1
-#    true_count[i]=count
-#
-#print("-------- computing melevenPointAP-----------")
-#
-##interpolated mAP at k
-#r_list, p_list,inter_precision = melevenPointAP(actual,predicted,true_count)
-#inter_map_array=[float(sum(col))/len(col) for col in zip(*inter_precision)]
-#x=np.linspace(0,1.1,num=11)
-#plt.plot(x,inter_map_array)
-#plt.ylabel('Precision')
-#plt.xlabel('Recall')
-#plt.title('11-point interpolated mAP')
-#plt.show()
+actual=label_query.tolist()
+type(actual)
+type(actual[0])
+predicted=arr_label.tolist()
+print(type(predicted))
+print(type(predicted[0]))
+score_map = mapk(actual,predicted,k=N_ranklist)
 
+true_count=np.zeros((1400,1))
+for i in range (query_idx.shape[0]):
+    count=0
+    for j in range(n_neighbors):
+        if (pred_labels[i][j] == label_query[i]) and (camId_query[i] != camId_gallery[pred[i]][j]):
+            count=count+1
+    true_count[i]=count
 
-
-#
+print("-------- computing melevenPointAP-----------")
+##
+##-------------------------------interpolated mAP at k------------------------------------
+r_list, p_list,inter_precision = melevenPointAP(actual,predicted,true_count)
+inter_map_array=[float(sum(col))/len(col) for col in zip(*inter_precision)]
 
 
 
