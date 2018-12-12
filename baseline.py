@@ -89,7 +89,7 @@ iden_gallery = np.unique(label_gallery)
 n_neighbors = 5328
 
 #knn classifier with metric defined
-clf = kNN(n_neighbors,'chebyshev')
+clf = kNN(n_neighbors,'manhattan')
 pred, errors = clf.fit(features_query, features_gallery)
 
 print("--------finished KNN-----------")

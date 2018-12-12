@@ -37,6 +37,7 @@ query_idx = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')['query_idx
 with open('PR_data/feature_data.json', 'r') as f:
     features = json.load(f)
 features = np.asarray(features) 
+print("-------------finished loading data---------------")
 
 
 def plotimg(filename):
@@ -71,53 +72,67 @@ camId_gallery = camId[gallery_idx-1]
 iden_query = np.unique(label_query)
 iden_gallery = np.unique(label_gallery)
 
-print('start!')
+print("-------------PCA---------------")
+pca = decomposition.PCA(n_components=100)
+pca.fit(features_train)
+pca1 = decomposition.PCA(n_components=100)
+pca1.fit(features_valid)
+pca2 = decomposition.PCA(n_components=100)
+pca2.fit(features_gallery)
+
+print("-------------PCA projection---------------")
+features_train_pca = pca.transform(features_train)
+features_valid_pca = pca1.transform(features_valid)
+features_query_pca = pca2.transform(features_query)
+features_gallery_pca = pca2.transform(features_gallery)
 
 # setting up LMN
-lmnn = LMNN(eta0=0.3, initial_metric=None, max_iter=5, k=3, solver='SDP')
+lmnn = LMNN(eta0=1e-7, initial_metric='euclidean', max_iter=100, k=5,mu=0.5, solver='SDP')
 
+print('-------------fitting data---------------------')
 # fit the data!
-lmnn.fit(features_train[:100], train_label_new[:100])
+lmnn.fit(features_train_pca, train_label_new)
 
 # transform our input space
+print('-------------transforming data---------------------')
+features_query_pca_trans = lmnn.transform(features_query_pca)
+features_gallery_pca_trans =lmnn.transform(features_gallery_pca)
 
-#features_query2 = lmnn.transform(features_query)
-#features_gallery2 =lmnn.transform(features_gallery)
+#core_energy=lmnn.predict(features_query_pca)
+#score_energy=lmnn.predict(features_query_pca)
+#
+n_neighbors = 20
+#knn classifier with metric defined
+clf = kNN(n_neighbors,'euclidean')
+pred, errors = clf.fit(features_query_pca_trans, features_gallery_pca_trans)
 
-score_energy=lmnn.predict(features_query)
+ 
+pred_labels = label_gallery[pred]
+for i in range (query_idx.shape[0]):
+    for j in range(n_neighbors):
+        if (pred_labels[i][j] == label_query[i]) and (camId_query[i] == camId_gallery[pred[i]][j]):
+            pred_labels[i][j] = 0
+ 
+pred_labels_temp = []
+N_ranklist = 10
+for i in range (query_idx.shape[0]):
+    pred_labels_temp.append(pred_labels[i][np.nonzero(pred_labels[i])][:N_ranklist])
+ 
+#ranklist 
+arr_label = np.vstack(pred_labels_temp)
 #
-#n_neighbors = 20
-##knn classifier with metric defined
-#clf = kNN(n_neighbors,'euclidean')
-#pred, errors = clf.fit(features_query2, features_gallery2)
-#
-# 
-#pred_labels = label_gallery[pred]
-#for i in range (query_idx.shape[0]):
-#    for j in range(n_neighbors):
-#        if (pred_labels[i][j] == label_query[i]) and (camId_query[i] == camId_gallery[pred[i]][j]):
-#            pred_labels[i][j] = 0
-# 
-#pred_labels_temp = []
-#N_ranklist = 10
-#for i in range (query_idx.shape[0]):
-#    pred_labels_temp.append(pred_labels[i][np.nonzero(pred_labels[i])][:N_ranklist])
-# 
-##ranklist 
-#arr_label = np.vstack(pred_labels_temp)
-##
-##rank1 accuracy
-#score = accuracy_score(arr_label[:,0], label_query)
-#
-## rankk accuracy
-#rankk=5
-#arr_label_rankk=np.zeros((1400,1))
-#for i in range(query_idx.shape[0]):
-#    for j in range(rankk):
-#        if (arr_label[i,j]==label_query[i]):
-#            arr_label_rankk[i]=arr_label[i,j]
-#            break
-#score_rankk = accuracy_score(arr_label_rankk, label_query)
+#rank1 accuracy
+score = accuracy_score(arr_label[:,0], label_query)
+
+# rankk accuracy
+rankk=5
+arr_label_rankk=np.zeros((1400,1))
+for i in range(query_idx.shape[0]):
+    for j in range(rankk):
+        if (arr_label[i,j]==label_query[i]):
+            arr_label_rankk[i]=arr_label[i,j]
+            break
+score_rankk = accuracy_score(arr_label_rankk, label_query)
 
 
 # =============================================================================

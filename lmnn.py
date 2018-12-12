@@ -17,11 +17,13 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn import preprocessing
 from sklearn.metrics import accuracy_score
 from knn_naive import kNN
+from ranklist import Rank
 import time
 import sys
 import json
 from sklearn import decomposition
 import metric_learn
+
 
 # 1467 identities in total
 num_identies = 1467
@@ -91,16 +93,20 @@ iden_query = np.unique(label_query)
 iden_gallery = np.unique(label_gallery)
 
 print('start!')
-pca = decomposition.PCA(n_components=100)
+pca = decomposition.PCA(n_components=30)
 pca.fit(features_train)
+pca1 = decomposition.PCA(n_components=30)
+pca1.fit(features_valid)
+pca2 = decomposition.PCA(n_components=30)
+pca2.fit(features_gallery)
 
 features_train_pca = pca.transform(features_train)
-features_valid_pca = pca.transform(features_valid)
-features_query_pca = pca.transform(features_query)
-features_gallery_pca = pca.transform(features_gallery)
+features_valid_pca = pca1.transform(features_valid)
+features_query_pca = pca2.transform(features_query)
+features_gallery_pca = pca2.transform(features_gallery)
 
 # setting up LMN
-lmnn = metric_learn.LMNN(k=2, learn_rate=1e-9,max_iter=20, convergence_tol=0.01, 
+lmnn = metric_learn.LMNN(k=2, learn_rate=1e-7,max_iter=100, convergence_tol=0.1, 
                          regularization = 0.5, use_pca= False, verbose=True)
 
 # fit the data!
@@ -115,19 +121,20 @@ features_gallery2 =lmnn.transform(features_gallery_pca)
 n_neighbors = 20
 #knn classifier with metric defined
 clf = kNN(n_neighbors,'euclidean')
-pred_train, errors_train = clf.fit(features_train2, features_train2)
-arr_label_train = ranklist(train_idx_new, pred_train, train_label_new, camId_train, camId_train)
-#rank1 train accuracy
-score_train = accuracy_score(arr_label_train[:,0], train_label_new)
+rk = Rank(n_neighbors)
+#pred_train, errors_train = clf.fit(features_train2, features_train2)
+#arr_label_train = rk.generate(train_idx_new, pred_train, train_label_new, train_label_new, camId_train, camId_train)
+##rank1 train accuracy
+#score_train = accuracy_score(arr_label_train[:,0], train_label_new)
 
 pred_valid, errors_valid = clf.fit(features_valid2, features_valid2)
-arr_label_valid = ranklist(valid_idx, pred_valid, valid_label, camId_valid, camId_valid)
+arr_label_valid = rk.generate(valid_idx, pred_valid, valid_label, valid_label, camId_valid, camId_valid)
 #rank1 valid accuracy
 score_valid = accuracy_score(arr_label_valid[:,0], valid_label)
 
 pred_query, errors = clf.fit(features_query2, features_gallery2)
-arr_label_query = ranklist(query_idx, pred_query, label_gallery, camId_query, camId_gallery)
-#rank1 accuracy
+arr_label_query = rk.generate(query_idx, pred_query, label_gallery, label_query, camId_query, camId_gallery)
+#rank1 test accuracy
 score_test = accuracy_score(arr_label_query[:,0], label_query)
 
 
@@ -141,8 +148,4 @@ score_test = accuracy_score(arr_label_query[:,0], label_query)
 #            break
 #score_rankk = accuracy_score(arr_label_rankk, label_query)
 
-
-# =============================================================================
 #plotimg(filelist[14065][0])
-#release memory
-del valid_index
