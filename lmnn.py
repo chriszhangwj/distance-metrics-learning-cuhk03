@@ -24,11 +24,10 @@ import json
 from sklearn import decomposition
 import metric_learn
 
-
 # 1467 identities in total
 num_identies = 1467
 num_validation = 100  
-rnd = np.random.RandomState(3)
+rnd = np.random.RandomState(100)
 #
 camId = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')['camId'].flatten()
 filelist = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')['filelist'].flatten()
@@ -93,30 +92,37 @@ iden_query = np.unique(label_query)
 iden_gallery = np.unique(label_gallery)
 
 print('start!')
-pca = decomposition.PCA(n_components=30)
-pca.fit(features_train)
-pca1 = decomposition.PCA(n_components=30)
-pca1.fit(features_valid)
-pca2 = decomposition.PCA(n_components=30)
-pca2.fit(features_gallery)
-
-features_train_pca = pca.transform(features_train)
-features_valid_pca = pca1.transform(features_valid)
-features_query_pca = pca2.transform(features_query)
-features_gallery_pca = pca2.transform(features_gallery)
+#pca = decomposition.PCA(n_components=300)
+#pca.fit(features_train)
+#pca1 = decomposition.PCA(n_components=300)
+#pca1.fit(features_valid)
+#pca2 = decomposition.PCA(n_components=300)
+#pca2.fit(features_gallery)
+#
+#features_train_pca = pca.transform(features_train)
+#features_valid_pca = pca1.transform(features_valid)
+#features_query_pca = pca2.transform(features_query)
+#features_gallery_pca = pca2.transform(features_gallery)
 
 # setting up LMN
-lmnn = metric_learn.LMNN(k=2, learn_rate=1e-7,max_iter=100, convergence_tol=0.1, 
+lmnn = metric_learn.LMNN(k=5, learn_rate=1e-1,max_iter=1000, convergence_tol=1e-10, 
                          regularization = 0.5, use_pca= False, verbose=True)
 
 # fit the data!
-lmnn.fit(features_train_pca, train_label_new)
+#lmnn.fit(features_train_pca, train_label_new)
+lmnn.fit(features_train, train_label_new)
+
+
 # transform our input space
-#X_lmnn = lmnn.transform()
-features_train2 = lmnn.transform(features_train_pca)
-features_valid2 = lmnn.transform(features_valid_pca)
-features_query2 = lmnn.transform(features_query_pca)
-features_gallery2 =lmnn.transform(features_gallery_pca)
+#features_train2 = lmnn.transform(features_train_pca)
+#features_valid2 = lmnn.transform(features_valid_pca)
+#features_query2 = lmnn.transform(features_query_pca)
+features_gallery2 =lmnn.transform(features_gallery)
+features_train2 = lmnn.transform(features_train)
+features_valid2 = lmnn.transform(features_valid)
+features_query2 = lmnn.transform(features_query)
+features_gallery2 =lmnn.transform(features_gallery)
+
 
 n_neighbors = 20
 #knn classifier with metric defined
@@ -127,17 +133,80 @@ rk = Rank(n_neighbors)
 ##rank1 train accuracy
 #score_train = accuracy_score(arr_label_train[:,0], train_label_new)
 
-pred_valid, errors_valid = clf.fit(features_valid2, features_valid2)
-arr_label_valid = rk.generate(valid_idx, pred_valid, valid_label, valid_label, camId_valid, camId_valid)
-#rank1 valid accuracy
-score_valid = accuracy_score(arr_label_valid[:,0], valid_label)
-
 pred_query, errors = clf.fit(features_query2, features_gallery2)
-arr_label_query = rk.generate(query_idx, pred_query, label_gallery, label_query, camId_query, camId_gallery)
+pred_labels = label_gallery[pred_query]
+arr_label_query, arr_idx_query = rk.generate(query_idx, pred_query, label_gallery, label_query, camId_query, camId_gallery, gallery_idx)
+print("computing rank 1 score")
 #rank1 test accuracy
 score_test = accuracy_score(arr_label_query[:,0], label_query)
+            
+print("computing rank 100 score")
+rankk=100
+score_rankk=np.zeros([1,rankk])
+arr_label_rankk=np.zeros((1400,1))
+for i in range(1,rankk+1): 
+    arr_label_rankk=np.zeros((1400,1))
+    for n in range(query_idx.shape[0]):
+        for m in range(i):
+            if (arr_label_query[n,m]==label_query[n]):
+                arr_label_rankk[n]=arr_label_query[n,m]
+                break
+    score_rankk[0,i-1] = accuracy_score(arr_label_rankk, label_query)
+                
+print("computing mAP")   
+instance_key=[]
+query_key=[]
+for i in range (query_idx.shape[0]):
+    for j in range (gallery_idx.shape[0]):
+        if (label_query[i] == label_gallery[j]) and (camId_query[i] != camId_gallery[j]):
+            instance_key.append(gallery_idx[j])
+            query_key.append(instance_key)
+instance_key=[]
+rankk=10
+score_rankk=np.zeros([100,rankk])
+for dice in range (100):
+    for i in range(1,rankk+1):
+        arr_label_rankk=np.zeros((1400,1))
+        for n in range(query_idx.shape[0]):
+        #num_instance=len(query_key[n,:])
+            idx_temp=np.random.choice(query_key[n],1) # randomly select an index
+            for m in range(i):
+                if (arr_idx_query[n,m]== idx_temp):
+                    arr_label_rankk[n]=arr_label_query[n,m]
+                    break
+score_rankk[dice,i-1] = accuracy_score(arr_label_rankk, label_query)
+score_mean_rankk=np.mean(score_rankk, axis=0)
+            
+            
+actual=label_query.tolist()
+predicted=arr_label_query.tolist()
+score_map = mapk(actual,predicted,k=10)
 
+true_count=np.zeros((1400,1))
+for i in range (query_idx.shape[0]):
+    count=0
+    for j in range(n_neighbors):
+        if (pred_labels[i][j] == label_query[i]) and (camId_query[i] != camId_gallery[pred_labels[i]][j]):
+            count=count+1
+            true_count[i]=count
 
+print("-------- computing melevenPointAP-----------")
+
+#-------------------------------interpolated mAP at k------------------------------------
+r_list, p_list,inter_precision = melevenPointAP(actual,predicted,true_count)
+inter_map_array=[float(sum(col))/len(col) for col in zip(*inter_precision)]
+            
+#            score_train = 0
+#            score_valid = 0
+#            ans.append(N_pca[n_pca])
+#            ans.append(n_num_constraints[n_c])
+#            ans.append(n_diagonal_c[n_dc])
+#            ans.append(score_train)
+#            ans.append(score_valid)
+#            ans.append(score_test)
+#
+#            print('pca number = %d, number of constrains = %d, diagnoal c = %f ' %(N_pca[n_pca], n_num_constraints[n_c], n_diagonal_c[n_dc]))
+#            print('score train = %f, score_valid = %f, score test = %f,' %(score_train, score_valid, score_test))
 # rankk test accuracy
 #rankk=5
 #arr_label_rankk=np.zeros((1400,1))
@@ -149,3 +218,5 @@ score_test = accuracy_score(arr_label_query[:,0], label_query)
 #score_rankk = accuracy_score(arr_label_rankk, label_query)
 
 #plotimg(filelist[14065][0])
+#release memory
+
